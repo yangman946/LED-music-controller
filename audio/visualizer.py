@@ -1,13 +1,13 @@
 # code that visualises audio
-# 
+# Todo: clean up links
 
 # Import and initialize the pygame library
 import pygame
-import random
 from analyser import analyzer
 from itertools import repeat
 import os
 import sys
+import time
 
 # Add the project directory to sys.path
 current_dir = os.path.dirname(__file__)
@@ -15,41 +15,12 @@ project_dir = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.append(project_dir)
 
 from utils.utilities import Utils
+from utils.spotify import Spotify
+from vfx.particles.p1 import Particle 
+
+import threading
 
 
-# Particle class
-class Particle(pygame.sprite.Sprite):
-    def __init__(self, pos, col, amp):
-        super().__init__()
-        self.size = random.uniform(2, 5)
-        self.image = pygame.Surface((self.size, self.size))
-        cols = [col, (255, 255, 255)]
-        random.choice
-        self.image.fill(random.choice(cols))
-        self.rect = self.image.get_rect(center=pos)
-        self.vel = pygame.math.Vector2(random.uniform(-amp, amp), random.uniform(-amp, amp))
-        self.gravity = 0  # Gravity effect
-        self.fade_speed = random.uniform(0.5, 1)  # Fade speed
-        self.alpha = 255
-
-
-    def update(self):
-        
-        self.vel.y += self.gravity
-        self.rect.move_ip(self.vel)
-        self.alpha -= self.fade_speed
-        #self.rect.inflate_ip(-self.rect.width*0.2, -self.rect.height*0.2)
-        
-
-        if self.alpha <= 0:
-            self.kill()
-
-        self.size += 0.1
-        self.image = pygame.transform.scale(self.image, (int(self.size), int(self.size)))
-
-    def draw(self, surface):
-        self.image.set_alpha(int(self.alpha))
-        surface.blit(self.image, self.rect.topleft)
 
 class Visualizer:
     def __init__(self):
@@ -57,19 +28,44 @@ class Visualizer:
         
         self.A = analyzer()
         self.U = Utils()
+        self.S = Spotify()
         self.BASS = [0]
         self.AMP = [0]
         self.FREQ = [0]
         self.last = 0
 
+        self.interval = 10
 
-
-
+        self.out = None
+        self.lastSong = ""
         # Run until the user asks to quit
         self.running = True
+        self.assets = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'assets'))
+        self.placeholder = self.assets + '\placeholder.jpg'
+        self.get_current_track_in_thread(self.on_new_track)
+        self.hue = 0
+        self.sensitivity = 1
 
+    def get_current_track_in_thread(self, callback):
+        def worker():
+            while True:
+                track = self.S.getinfo()
+                if track:
+                    callback(track)
+                else:
+                    print("No song currently playing")
 
+                # Sleep for 5 seconds before checking again
+                time.sleep(5)
 
+        # Start a new thread to run the API calls in the background
+        thread = threading.Thread(target=worker)
+        thread.daemon = True  # Ensures the thread will close when the main program exits
+        thread.start()
+
+    def on_new_track(self, current_track):
+        self.out = current_track
+        print(f"Now playing: {self.out[0]} by {self.out[1]}")
 
     def close(self):
         self.running = False
@@ -101,17 +97,30 @@ class Visualizer:
     def start(self):
         self.running = True
         pygame.init()
+        font = pygame.font.Font(self.assets + '\BebasNeue-Regular.ttf', 36)  # None means default font, size 36
+        text_color = (255, 255, 255)  # White color
+        text_surface = []
+        
+        
         offset = repeat((0, 0))
         all_particles = pygame.sprite.Group()
         amount = 1
         d = pygame.display.get_num_displays() - 1
         # Set up the drawing window
         self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=d)
+        dark_overlay = pygame.Surface((self.screen.get_width(), self.screen.get_width()))
+        dark_overlay.set_alpha(180)
+        dark_overlay.fill((0, 0, 0)) 
+
+
+        self.background_image = pygame.image.load(self.placeholder)
+
+        self.background_image = pygame.transform.scale(self.background_image, (self.screen.get_width(), self.screen.get_width()))
 
         self.screen2 = self.screen.copy()
         self.center = (self.screen.get_width()/2, self.screen.get_height()/2)
 
-        self.image = pygame.image.load('C:\\Users\\Clarence\\Documents\\python\\LED controller\\assets\\logo.png')  # Replace 'your_image.png' with the path to your image
+        self.image = pygame.image.load(self.assets + '\logo.png')  # Replace 'your_image.png' with the path to your image
         self.image_rect = self.image.get_rect()
 
         while self.running:
@@ -124,6 +133,20 @@ class Visualizer:
             self.AMP = self.AMP[-3:]
             self.FREQ = self.FREQ[-10:]
 
+
+
+
+            if self.out != None:
+                if self.out[0] != self.lastSong:
+                    self.lastSong = self.out[0]
+                    text_surface = [font.render(self.out[0], True, text_color), font.render(self.out[1], True, text_color)]
+                    #img = Image.open(self.out[2])
+                    #blurred_image = img.filter(ImageFilter.BoxBlur(5))
+                    #blurred_image.save(self.blur)
+
+                    self.background_image = pygame.image.load(self.assets + '\\album.png')
+                    self.background_image = pygame.transform.scale(self.background_image, (self.screen.get_width(), self.screen.get_width()))
+
             #print(int(self.U.avg(self.FREQ)))
             # Did the user click the window close button?
             for event in pygame.event.get():
@@ -133,6 +156,14 @@ class Visualizer:
             # Fill the background with black
             self.screen.fill((0, 0, 0))
             self.screen2.fill((0, 0, 0, 0))
+            y_position = (self.screen.get_height() - self.screen.get_width()) // 2
+            self.screen.blit(self.background_image, (0, y_position))
+            self.screen.blit(dark_overlay, (0, 0))
+            if text_surface != []:
+                text_x = 10  # Small padding from the left edge
+                text_y = self.screen.get_height() - text_surface[0].get_height() - 10  # Small padding from the bottom edge
+                self.screen.blit(text_surface[1], (text_x, text_y))
+                self.screen.blit(text_surface[0], (text_x, text_y - 40))
 
             #pygame.draw.circle(screen, (225, 0, 0), (250, 250), int(avg(BASS))) 
             
@@ -166,7 +197,8 @@ class Visualizer:
                 if abs(self.U.avg(self.FREQ) - self.last) > 10:
                     # new hue
                     self.last = self.U.avg(self.FREQ)
-                    amount = self.U.clamp(int((self.U.avg(self.FREQ)-20)/(60-20) * 359 + 1)) # map frequency to colour
+                    #amount = self.U.clamp(int((self.U.avg(self.FREQ)-20)/(60-20) * 359 + 1)) # map frequency to colour
+                    amount = self.hue
                 
                 self.draw_circle_with_stroke2(self.screen2, (self.center), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), 10, self.U.hue_to_rgb(amount), (255, 255, 255)) # this i think also inteferes
 
@@ -177,6 +209,7 @@ class Visualizer:
             # Flip the display
                     
             self.screen2.set_colorkey((0, 0, 0)) 
+            #self.screen.blit(background_image, (0, 0))  # (0, 0) is the top-left corner
             self.screen.blit(self.screen2, next(offset))
             pygame.display.flip()
 

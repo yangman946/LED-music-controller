@@ -27,6 +27,7 @@ class App(customtkinter.CTk):
 
         self.mode = 1
         self.AUDIOMODE = 0 # 0 = party, 1 = screen
+        self.LIGHTMODE = 1 # 0 = soft (lofi, chill), 1 = Mid (basic rap), 2 = Hard (Hardstyle, phonk, etc.)
 
         #GUI
         self.frame = customtkinter.CTkFrame(self, width=450, height=450)
@@ -38,13 +39,25 @@ class App(customtkinter.CTk):
         self.seg_button_1 = customtkinter.CTkSegmentedButton(self.frame, command=self.changeMode)
         self.seg_button_1.pack(padx=20, pady=20, fill="x", side="top")
 
+
+
         s = customtkinter.CTkLabel(self.frame, text="Sensitivity", font=customtkinter.CTkFont(size=15, weight="bold"))
         s.pack(padx=20, pady=(20,0), side="top")
 
-        self.slider_1 = customtkinter.CTkSlider(self.frame, from_=0, to=2, number_of_steps=10, command=self.updateS)
+
+
+        self.slider_1 = customtkinter.CTkSlider(self.frame, from_=0, to=2, number_of_steps=10, command=self.updateSv)
         self.slider_1.pack(padx=20, pady=20, fill="x", side="top")
         #self.slider_1.configure(state="disabled")
 
+        s2 = customtkinter.CTkLabel(self.frame, text="Light Mode", font=customtkinter.CTkFont(size=15, weight="bold"))
+        s2.pack(padx=20, pady=(20,0), side="top")
+        self.seg_button_2 = customtkinter.CTkSegmentedButton(self.frame, command=self.changeLight)
+        self.seg_button_2.pack(padx=20, pady=20, fill="x", side="top")
+
+        self.seg_button_2.configure(values=["Soft", "Mid", "Hard"])
+        self.seg_button_2.set("Mid")
+        self.seg_button_2.configure(state="disabled")
 
         self.setBTN = customtkinter.CTkButton(self.frame, text="STOP", command=self.Apply)
         self.setBTN.pack(padx=20, pady=20, fill="x", side="bottom")
@@ -62,7 +75,7 @@ class App(customtkinter.CTk):
 
         u = utilities.Utils()
         creds = u.creds()
-        self.Audio = audio.Audio([creds["user"], creds["pass"], creds["IP"]], s=(float(self.slider_1.get())))
+        self.Audio = audio.Audio([creds["user"], creds["pass"], creds["IP"]], s=(float(self.slider_1.get())), m=self.LIGHTMODE)
         self.screen = screenAnalyse.screen([creds["user"], creds["pass"], creds["IP"]], s=(float(self.slider_1.get())))
         #self.v = visualizer.Visualizer()
         self.T1 = None
@@ -75,15 +88,22 @@ class App(customtkinter.CTk):
         elif s == "Movie Mode":
             self.AUDIOMODE = 1
 
+    def changeLight(self, event):
+        s = self.seg_button_2.get()
+        if s == "Soft":
+            self.LIGHTMODE = 0
+        elif s == "Mid":
+            self.LIGHTMODE = 1
+        elif s == "Hard":
+            self.LIGHTMODE = 2
 
-
-    def updateS(self, event):
+    def updateSv(self, event):
         if self.mode == 0:
             return
         s = (float(self.slider_1.get()))
         #print(s)
         if self.AUDIOMODE == 0:
-            self.Audio.updateS(s)
+            self.Audio.updateS(s, self.LIGHTMODE)
         elif self.AUDIOMODE == 1: # movie
             self.screen.updateS(s)
 
@@ -92,7 +112,7 @@ class App(customtkinter.CTk):
         if self.AUDIOMODE == 0: # start party
             self.T1 = threading.Thread(target=asyncio.run, args=[self.Audio.start()])
             s = (float(self.slider_1.get()))
-            self.Audio.updateS(s) 
+            self.Audio.updateS(s, self.LIGHTMODE) 
         elif self.AUDIOMODE == 1: # start movie
             self.T1 = threading.Thread(target=asyncio.run, args=[self.screen.start()])
             s = (float(self.slider_1.get()))
@@ -115,7 +135,7 @@ class App(customtkinter.CTk):
         self.T1.join(timeout=1)
         self.T1 = None
     
-    def Apply(self):
+    def Apply(self): # pressed the button (pause)
         if self.mode == 1: # stop
             self.setBTN.configure(text="START")
             
@@ -124,7 +144,7 @@ class App(customtkinter.CTk):
             self.progressbar_1.configure(mode="determinate")
             self.progressbar_1.set(100)
             self.seg_button_1.configure(state="enabled")
-            
+            self.seg_button_2.configure(state="enabled")
 
             self.stop()
             self.mode = 0
@@ -134,6 +154,7 @@ class App(customtkinter.CTk):
             self.progressbar_1.configure(mode="indeterminnate")
             self.progressbar_1.start()
             self.seg_button_1.configure(state="disabled")
+            self.seg_button_2.configure(state="disabled")
             self.mode = 1
             self.create()
 
