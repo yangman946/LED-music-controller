@@ -3,6 +3,7 @@ from tapo import ApiClient
 import asyncio
 from audio.analyser import analyzer
 from utils import utilities
+import os
 
 # instantiate analyser class
 class Audio:
@@ -23,7 +24,8 @@ class Audio:
         self.FreqThreshold = [5, 10, 20]
         self.FreqDiff = [5, 10, 10]
 
-        self.AmpThreshold = [30, 40, 50]
+        self.AmpThreshold = [60, 40, 30]
+
     
     def close(self):
         print("QUITTING")
@@ -63,7 +65,10 @@ class Audio:
             await device.on()
         except:
             return
-
+        
+        #value = await device.get_device_info_json()
+        #print(value['hue'])
+        print(os.path.abspath(os.path.dirname( __file__ ) + "\color.txt"))
 
         AMPS = [0]
         FREQ = [0]
@@ -95,7 +100,6 @@ class Audio:
                 BASS = BASS[-8:]
 
                 #print(self.U.avg(FREQ))
-
                 # if no signal detected
                 if amp >= self.AmpThreshold[self.mode] and Signal:
                     Signal = False
@@ -103,6 +107,14 @@ class Audio:
                         await device.set_brightness(1) # toggle 
                         b = 1
                     await device.set_hue_saturation(1, 100) # set to red when silent
+
+                    with open(os.path.abspath(os.path.dirname( __file__ ) + "\color.txt"), "w") as f:
+                        #val = await device.get_device_info_json()
+                        #print(val['hue'])
+                        f.write(str(1))
+                        f.flush()
+
+
                     print("no signal")
                     continue
                 
@@ -151,6 +163,17 @@ class Audio:
                         if h != amount:
                             await device.set_hue_saturation(amount, 100) # set colour 
                             h = amount
+
+                            with open(os.path.abspath(os.path.dirname( __file__ ) + "\color.txt"), "w") as f:
+                                #val = await device.get_device_info_json()
+                                #print(val['hue'])
+                                f.write(str(amount))
+                                f.flush()
+
+
+
+
+
             except asyncio.CancelledError:
                 break  # Exit the loop if cancelled
             

@@ -43,17 +43,20 @@ class Visualizer:
         self.assets = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'assets'))
         self.placeholder = self.assets + '\placeholder.jpg'
         self.get_current_track_in_thread(self.on_new_track)
-        self.hue = 0
+
         self.sensitivity = 1
 
     def get_current_track_in_thread(self, callback):
         def worker():
             while True:
-                track = self.S.getinfo()
-                if track:
-                    callback(track)
-                else:
-                    print("No song currently playing")
+                try:
+                    track = self.S.getinfo()
+                    if track:
+                        callback(track)
+                    else:
+                        print("No song currently playing")
+                except:
+                    self.S.start()
 
                 # Sleep for 5 seconds before checking again
                 time.sleep(5)
@@ -104,7 +107,7 @@ class Visualizer:
         
         offset = repeat((0, 0))
         all_particles = pygame.sprite.Group()
-        amount = 1
+        self.amount = 1
         d = pygame.display.get_num_displays() - 1
         # Set up the drawing window
         self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=d)
@@ -133,6 +136,14 @@ class Visualizer:
             self.AMP = self.AMP[-3:]
             self.FREQ = self.FREQ[-10:]
 
+            with open(os.path.abspath(os.path.dirname( __file__ ) + "\color.txt"), "r") as f:
+                
+                #print(val['hue'])
+                try:
+                    self.amount = int(f.read())
+                except:
+                    pass
+                #f.flush()
 
 
 
@@ -169,7 +180,7 @@ class Visualizer:
             
             if self.U.avg(self.AMP) < 60:
                 for _ in range(1+ int(self.U.avg(self.BASS)/100)):  # Number of particles to emit per frame
-                    particle = Particle(self.center, self.U.hue_to_rgb(amount), int((85-self.U.avg(self.AMP))/5))
+                    particle = Particle(self.center, self.U.hue_to_rgb(self.amount), int((85-self.U.avg(self.AMP))/5))
                     all_particles.add(particle)
 
             # Update and draw particles
@@ -194,13 +205,14 @@ class Visualizer:
 
             # Draw a solid blue circle in the center
             if (int(90-self.U.avg(self.AMP)) > 6):
+                '''
                 if abs(self.U.avg(self.FREQ) - self.last) > 10:
                     # new hue
                     self.last = self.U.avg(self.FREQ)
                     #amount = self.U.clamp(int((self.U.avg(self.FREQ)-20)/(60-20) * 359 + 1)) # map frequency to colour
-                    amount = self.hue
+                '''
                 
-                self.draw_circle_with_stroke2(self.screen2, (self.center), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), 10, self.U.hue_to_rgb(amount), (255, 255, 255)) # this i think also inteferes
+                self.draw_circle_with_stroke2(self.screen2, (self.center), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), int(90-self.U.avg(self.AMP))*2+ self.U.bassDev(self.AMP, True), 10, self.U.hue_to_rgb(self.amount), (255, 255, 255)) # this i think also inteferes
 
 
             if abs(self.BASS[0] - self.BASS[-1]) > 50:

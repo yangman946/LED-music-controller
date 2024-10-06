@@ -8,14 +8,18 @@ import os
 
 class Spotify:
     def __init__(self):
-        username = "c12325"
-        scope = "user-read-currently-playing"
-        redirect_uri = "http://google.com/"
-        cache_path = os.path.expanduser("~\\Documents\\spotify_token_cache")
+        self.username = "c12325"
+        self.scope = "user-read-currently-playing"
+        self.redirect_uri = "http://google.com/"
+        self.cache_path = os.path.expanduser("~\\Documents\\spotify_token_cache")
         # Get the token
-        token = util.prompt_for_user_token(username, scope, SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, redirect_uri, cache_path)
-        self.sp = spotipy.Spotify(auth=token)
+
         self.last_song_id = None  # Track the last song's ID
+        self.start()
+
+    def start(self):
+        token = util.prompt_for_user_token(self.username, self.scope, SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, self.redirect_uri, self.cache_path)
+        self.sp = spotipy.Spotify(auth=token)
 
     def getinfo(self):
 
