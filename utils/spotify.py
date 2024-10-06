@@ -46,7 +46,7 @@ class Spotify:
         print(image_response.status_code)
 
         # Define the full path where the image will be saved
-        save_path = r'C:\\Users\\Clarence\\Documents\\GitHub\\LED-controller\\assets\\album.png'
+        save_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'assets')) + '\\album.png'
 
         # Ensure the directory exists
         directory = os.path.dirname(save_path)
